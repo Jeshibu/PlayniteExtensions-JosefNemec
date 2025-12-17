@@ -47,25 +47,74 @@ namespace SteamLibrary.Services
 
         private async Task<SteamUserToken?> GetSteamUserTokenFromWebViewAsync(IWebView webView)
         {
+            logger.Info("GetSteamUserTokenFromWebViewAsync");
             var url = webView.GetCurrentAddress();
             if (url.Contains("/login"))
+            {
+                logger.Info($"Current URL contains /login, canceling: {url}");
                 return null;
+            }
 
             var source = await webView.GetPageSourceAsync();
+            await GenerateLog(source);
+
             var userIdMatch = Regex.Match(source, "&quot;steamid&quot;:&quot;(?<id>[0-9]+)&quot;");
             var tokenMatch = Regex.Match(source, "&quot;webapi_token&quot;:&quot;(?<token>[^&]+)&quot;");
 
             if (!userIdMatch.Success || !tokenMatch.Success)
             {
-                logger.Warn("Could not find Steam user ID or token");
+                if (!userIdMatch.Success)
+                    logger.Warn("Could not find Steam user ID");
+
+                if (!tokenMatch.Success)
+                    logger.Warn("Could not find Steam token");
+
                 return null;
             }
 
-            return new SteamUserToken
+            var token = new SteamUserToken(
+                ulong.Parse(userIdMatch.Groups["id"].Value),
+                tokenMatch.Groups["token"].Value);
+
+            logger.Info($"Returning Steam user ID: {token.UserId}");
+            return token;
+        }
+
+        private async Task GenerateLog(string pageSource)
+        {
+            var doc = await new HtmlParser().ParseAsync(pageSource);
+            var configElement = doc.GetElementById("application_config");
+            if (configElement == null)
             {
-                UserId = ulong.Parse(userIdMatch.Groups["id"].Value),
-                AccessToken = tokenMatch.Groups["token"].Value,
-            };
+                logger.Warn("Could not find application config element");
+                return;
+            }
+
+            logger.Info(configElement.OuterHtml);
+
+            LogAttribute<StoreUserConfig>("data-store_user_config");
+            LogAttribute<UserInfo>("data-userinfo");
+            return;
+
+            void LogAttribute<T>(string attributeName)
+            {
+                if (!configElement.HasAttribute(attributeName))
+                {
+                    logger.Warn($"Could not find config attribute: {attributeName}");
+                    return;
+                }
+
+                var attrValue = configElement.GetAttribute(attributeName);
+                try
+                {
+                    var obj = JsonConvert.DeserializeObject<T>(attrValue);
+                    logger.Info($"{typeof(T).Name}: {JsonConvert.SerializeObject(obj)}");
+                }
+                catch (Exception ex)
+                {
+                    logger.Error(ex, $"Config attribute parsing error for {attributeName}");
+                }
+            }
         }
 
         public async Task<SteamUserToken> GetAccessTokenAsync()
