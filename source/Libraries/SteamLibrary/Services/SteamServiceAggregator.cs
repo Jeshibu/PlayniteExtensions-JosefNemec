@@ -148,7 +148,7 @@ namespace SteamLibrary.Services
                         var userToken = await storeService.GetAccessTokenAsync();
                         TryAddGames(() => playerService.GetOwnedGamesWeb(settings, userToken, settings.IncludeFreeSubGames), "PlayerService (access token)", onlineLibraryGameIds, true);
 
-                        if (!TryAddGames(() => clientCommService.GetClientAppList(settings, userToken), "GetClientAppList", onlineLibraryGameIds, true))
+                        if (!TryAddGames(() => clientCommService.GetWindowsAppList(settings, userToken), "GetClientAppList", onlineLibraryGameIds, overwriteName: true))
                             TryAddGames(() => GetSteamStoreGamesAsync(settings, allGames).GetAwaiter().GetResult(), "userdata", onlineLibraryGameIds);
 
                         if (settings.ImportFamilySharedGames)

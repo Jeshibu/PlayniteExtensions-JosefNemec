@@ -95,4 +95,21 @@ namespace SteamLibrary.Models
     {
         public List<ClientPlaytime> games { get; set; }
     }
+
+    public class GetAllClientLogonInfoResponse
+    {
+        public List<ClientSession> sessions { get; set; } = [];
+        public int refetch_interval_sec { get; set; }
+    }
+
+    public class ClientSession
+    {
+        public string client_instanceid { get; set; }
+        public int protocol_version { get; set; }
+        public string os_name { get; set; }
+        public string machine_name { get; set; }
+        public int os_type { get; set; }
+        public int device_type { get; set; }
+        public int realm { get; set; }
+    }
 }
